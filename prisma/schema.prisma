@@ -1,0 +1,64 @@
+// Prisma schema — future-ready data model for ROI Intelligence.
+// No migrations needed yet (mock data mode).
+// To activate: add DATABASE_URL to .env, run `npx prisma migrate dev`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Store {
+  id            String         @id @default(cuid())
+  name          String
+  shopifyDomain String         @unique
+  createdAt     DateTime       @default(now())
+  campaigns     Campaign[]
+  settings      StoreSettings?
+  notifications NotificationLog[]
+}
+
+model Campaign {
+  id        String          @id @default(cuid())
+  storeId   String
+  name      String
+  channel   String          // 'Meta' | 'Google' | 'TikTok' | 'Email'
+  createdAt DateTime        @default(now())
+  store     Store           @relation(fields: [storeId], references: [id])
+  snapshots DailySnapshot[]
+}
+
+model DailySnapshot {
+  id         String   @id @default(cuid())
+  campaignId String
+  date       DateTime @db.Date
+  spend      Float
+  revenue    Float
+  orders     Int
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([campaignId, date])
+}
+
+model StoreSettings {
+  id               String   @id @default(cuid())
+  storeId          String   @unique
+  cogs             Float    // e.g. 0.38 = 38%
+  shippingPerOrder Float    // e.g. 5.50
+  refundRate       Float    // e.g. 0.028 = 2.8%
+  paymentFee       Float    // e.g. 0.029 = 2.9%
+  updatedAt        DateTime @updatedAt
+  store            Store    @relation(fields: [storeId], references: [id])
+}
+
+model NotificationLog {
+  id      String   @id @default(cuid())
+  storeId String
+  body    String
+  sentAt  DateTime @default(now())
+  status  String   // 'queued' | 'failed'
+  store   Store    @relation(fields: [storeId], references: [id])
+}
