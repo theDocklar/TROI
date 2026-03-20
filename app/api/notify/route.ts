@@ -38,15 +38,21 @@ export async function POST(req: NextRequest): Promise<NextResponse<TwilioMockRes
     console.log(`  Body  :\n${payload.body}`);
     console.log(`  SID   : ${sid}`);
 
-    /*
-     * Production swap:
-     * const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-     * await twilio.messages.create({
-     *   from: process.env.TWILIO_WHATSAPP_FROM ?? 'whatsapp:+14155238886',
-     *   to:   payload.to,
-     *   body: payload.body,
-     * });
-     */
+    // If real Twilio credentials are present, send a live WhatsApp message
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken  = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_WHATSAPP_FROM ?? 'whatsapp:+14155238886';
+
+    if (accountSid && authToken && !accountSid.startsWith('ACxxxxxxx')) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const twilio = require('twilio')(accountSid, authToken);
+      const msg = await twilio.messages.create({
+        from: fromNumber,
+        to:   payload.to,
+        body: payload.body,
+      });
+      return NextResponse.json({ sid: msg.sid, status: 'queued', to: payload.to, body: payload.body });
+    }
 
     return NextResponse.json({ sid, status: 'queued', to: payload.to, body: payload.body });
   } catch (err) {
