@@ -3,10 +3,13 @@
  */
 
 import type { Metadata } from 'next';
-import { DM_Sans } from 'next/font/google';
+import { DM_Sans, Inter } from 'next/font/google';
 import SWRProvider from '@/components/providers/SWRProvider';
 import { Toaster } from 'sonner';
 import './globals.css';
+import { cn } from "@/lib/utils";
+
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -25,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <html lang="en" suppressHydrationWarning className={dmSans.variable}>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
       <body className="font-sans antialiased bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-50 min-h-screen">
         <SWRProvider>
           {children}
