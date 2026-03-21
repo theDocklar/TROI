@@ -9,6 +9,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { authApi } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -33,27 +34,30 @@ export default function SignUpPage(): React.JSX.Element {
   const [showPwd, setShowPwd]     = useState(false);
   const [agreed, setAgreed]       = useState(false);
   const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState('');
 
-  function handleSignUp(e: React.FormEvent): void {
+  async function handleSignUp(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!agreed) return;
+    setError('');
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const { token, user } = await authApi.register(name, email, password);
+      localStorage.setItem('troi_token', token);
       localStorage.setItem('troi_authed', 'true');
-      localStorage.setItem('troi_user_email', email);
-      // New user always goes to onboarding
+      localStorage.setItem('troi_user_email', user.email);
+      localStorage.setItem('troi_user_name', user.name);
       localStorage.removeItem('troi_onboarded');
       router.replace('/onboard');
-    }, 900);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleGoogleSignUp(): void {
-    setLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('troi_authed', 'true');
-      localStorage.removeItem('troi_onboarded');
-      router.replace('/onboard');
-    }, 900);
+    // Google OAuth — not yet implemented
   }
 
   const passwordStrength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3;
@@ -164,6 +168,11 @@ export default function SignUpPage(): React.JSX.Element {
 
           {/* Registration form */}
           <form onSubmit={handleSignUp} className="space-y-4">
+            {error && (
+              <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="name" className="text-sm text-gray-700 dark:text-gray-300">Full name</Label>
               <Input

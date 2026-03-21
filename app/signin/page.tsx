@@ -9,6 +9,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, TrendingUp, BarChart3, Zap, CheckCircle } from 'lucide-react';
+import { authApi } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -35,26 +36,29 @@ export default function SignInPage(): React.JSX.Element {
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
 
-  function handleSignIn(e: React.FormEvent): void {
+  async function handleSignIn(e: React.FormEvent): Promise<void> {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    // Simulate auth round-trip
-    setTimeout(() => {
+    try {
+      const { token, user } = await authApi.signin(email, password);
+      localStorage.setItem('troi_token', token);
       localStorage.setItem('troi_authed', 'true');
-      localStorage.setItem('troi_user_email', email);
-      const onboarded = localStorage.getItem('troi_onboarded') === 'true';
-      router.replace(onboarded ? '/' : '/onboard');
-    }, 800);
+      localStorage.setItem('troi_user_email', user.email);
+      localStorage.setItem('troi_user_name', user.name);
+      if (user.onboarded) localStorage.setItem('troi_onboarded', 'true');
+      router.replace(user.onboarded ? '/' : '/onboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleGoogleSignIn(): void {
-    setLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('troi_authed', 'true');
-      const onboarded = localStorage.getItem('troi_onboarded') === 'true';
-      router.replace(onboarded ? '/' : '/onboard');
-    }, 800);
+    // Google OAuth — not yet implemented
   }
 
   return (
@@ -173,6 +177,11 @@ export default function SignInPage(): React.JSX.Element {
 
           {/* Email/password form */}
           <form onSubmit={handleSignIn} className="space-y-4">
+            {error && (
+              <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-sm text-gray-700 dark:text-gray-300">Email</Label>
               <Input
