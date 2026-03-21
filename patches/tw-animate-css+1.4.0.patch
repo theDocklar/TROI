@@ -1,0 +1,7 @@
+diff --git a/node_modules/tw-animate-css/package.json b/node_modules/tw-animate-css/package.json
+--- a/node_modules/tw-animate-css/package.json
++++ b/node_modules/tw-animate-css/package.json
+@@ -1 +1 @@
+-      "style": "./dist/tw-animate.css"
++      "style": "./dist/tw-animate.css",
++      "default": "./dist/tw-animate.css"

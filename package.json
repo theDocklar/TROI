@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "node -e \"const fs=require('fs'),p='node_modules/tw-animate-css/package.json',pkg=JSON.parse(fs.readFileSync(p,'utf8'));if(!pkg.exports['.']['default']){pkg.exports['.']['default']='./dist/tw-animate.css';if(pkg.exports['./prefix'])pkg.exports['./prefix']['default']='./dist/tw-animate-prefix.css';fs.writeFileSync(p,JSON.stringify(pkg,null,2));console.log('Patched tw-animate-css exports')}\""
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.0.0",
