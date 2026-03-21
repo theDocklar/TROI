@@ -81,3 +81,84 @@ You are the coding agent for `TROI` (ROI Intelligence), a Next.js 16 + TypeScrip
 - Lead with what changed, then why.
 - Include file paths when describing edits.
 - Offer next-step options only when they are genuinely useful.
+
+## Feature Inventory (current state)
+
+### Onboarding flow (`app/onboard/`)
+- Multi-step wizard (4 steps): Shopify confirmation → Connect channels → COGS setup → Confirm costs
+- `store/onboardStore.ts` — Zustand store persisted to `localStorage["troi_onboarded"]` and `localStorage["troi_skip_cogs"]`
+- `components/providers/OnboardingGuard.tsx` — client wrapper in `app/layout.tsx` that redirects unauthenticated users to `/onboard`
+- Three COGS paths in Step 3: per-product-group entry, Shopify import (mock), benchmark estimate
+
+### Dashboard tabs (`app/page.tsx`)
+- `shadcn/ui Tabs` with four tabs: **Overview** | **Products P&L** | **LTV** | **Experiments**
+- Active tab stored in `useUIStore().activeTab`
+
+### Per-SKU COGS (`components/settings/SettingsPanel.tsx`)
+- Settings panel now has **3 tabs**: P&L settings | Product groups | Channel budgets
+- Tab 2 "Product groups": per-category COGS entry, live blended COGS, "Apply to P&L" button
+- Tab 3 "Channel budgets": Meta/Google/TikTok/Email monthly budgets, allocation bar
+- Active settings tab stored in `useUIStore().settingsTab`
+
+### Product drill-down modal (`components/dashboard/ProductPL.tsx`, `ProductModal.tsx`)
+- `ProductPL` — Products P&L table with click-to-modal; uses `MOCK_PRODUCTS`
+- `ProductModal` — Sheet with P&L waterfall bar, 2×3 metrics grid, channel attribution table, recommendation paragraph
+- Break-even ROAS formula: `price / (price − COGS − shipping − refundAmt − feeAmt)`
+
+### LTV cohort chart (`components/dashboard/LTVTrackerV2.tsx`)
+- 4 metric toggles: LTV | CAC | LTV:CAC ratio | Repeat rate
+- Animated bar chart (6 cohort months), SVG trend line, summary row
+- Data from `MOCK_LTV_COHORTS` in `lib/mockData.ts`
+
+### Experiment creator (`components/dashboard/ExperimentsPanel.tsx`, `ExperimentCreator.tsx`)
+- `ExperimentsPanel` — table of experiments with status badges
+- `ExperimentCreator` — slide-in Sheet with name, channel, split slider, budget, duration, hypothesis; live projections
+
+### Notification centre (`components/notifications/NotificationCentre.tsx`)
+- `shadcn/ui Popover` anchored to bell icon in Topbar
+- Reads/writes `notifications` from `useUIStore()`
+- Opening marks all as read; per-item dismiss button
+
+### Attribution breakdown (`components/dashboard/AttributionBreakdown.tsx`)
+- Three models: First touch | Last touch | Linear
+- Animated stacked bar (CSS `width` transition), 4 channel cards with adjusted revenue/spend/ROI
+- Highest-ROI channel gets green ring
+
+### COGS warning banner (`components/dashboard/CogsWarning.tsx`)
+- `shadcn/ui Alert` (warning), shown when COGS is at default AND `troi_skip_cogs=true`
+- "Set up COGS" button: dispatches `setSettingsTab("products")` + `toggleSettings()`
+
+## localStorage Keys
+| Key | Purpose |
+|-----|---------|
+| `troi_onboarded` | `"true"` after onboarding is completed |
+| `troi_skip_cogs` | `"true"` if COGS was skipped during onboarding |
+| `roi_settings` | `StoreSettings` object (existing, managed by `useSettings` hook) |
+| `roi_v3` | `StoreSettings` written by onboarding wizard |
+| `roi_product_cogs` | `ProductGroup[]` COGS overrides per category |
+| `roi_budgets` | `Record<string, number>` channel monthly budget targets |
+
+## New Zustand Stores
+| Store | File | Purpose |
+|-------|------|---------|
+| `useOnboardStore` | `store/onboardStore.ts` | Onboarding step, completed flag, skipCogs flag |
+| `useUIStore` (extended) | `store/uiStore.ts` | Added: `notifications`, `activeTab`, `settingsTab` |
+
+## New Types (`types/index.ts`)
+- `OnboardStep` — `1 | 2 | 3 | 4`
+- `NotificationSeverity` — `"success" | "warning" | "danger" | "info"`
+- `Notification` — in-app notification shape
+- `ProductGroup` — COGS breakdown per product category
+- `Product` — mock product for ProductPL/Modal
+- `Experiment` — A/B experiment shape
+- `LTVCohort` — LTV cohort data point
+
+## New Mock Data (`lib/mockData.ts`)
+- `INITIAL_NOTIFICATIONS` — 8 seeded notifications (seed 88)
+- `PRODUCT_GROUP_DEFAULTS` — hardcoded benchmark COGS for 5 clothing categories
+- `MOCK_PRODUCTS` — 7 seeded products (seed 420)
+- `MOCK_LTV_COHORTS` — 6 monthly cohorts (seed 99)
+- `MOCK_EXPERIMENTS` — 4 A/B experiments
+
+## shadcn/ui Components Added
+`popover`, `tabs`, `toggle-group`, `slider`, `textarea`, `alert`, `toggle`

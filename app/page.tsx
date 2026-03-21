@@ -1,5 +1,6 @@
 /**
  * Dashboard shell — composes all sections in a sidebar + main layout.
+ * Four tabs: Overview | Products | LTV | Experiments
  */
 
 'use client';
@@ -13,9 +14,18 @@ import CampaignTable from '@/components/dashboard/CampaignTable';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import WhatsAppPreview from '@/components/notifications/WhatsAppPreview';
 import SettingsPanel from '@/components/settings/SettingsPanel';
+import AttributionBreakdown from '@/components/dashboard/AttributionBreakdown';
+import CogsWarning from '@/components/dashboard/CogsWarning';
+import ProductPL from '@/components/dashboard/ProductPL';
+import LTVTrackerV2 from '@/components/dashboard/LTVTrackerV2';
+import ExperimentsPanel from '@/components/dashboard/ExperimentsPanel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUIStore } from '@/store/uiStore';
 
-/** Main dashboard page — the single screen of the ROI Intelligence app. */
+/** Main dashboard page. */
 export default function DashboardPage(): React.JSX.Element {
+  const { activeTab, setActiveTab } = useUIStore();
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -24,27 +34,62 @@ export default function DashboardPage(): React.JSX.Element {
         <Topbar />
 
         <main className="flex-1 px-4 sm:px-6 py-6 space-y-6 max-w-[1400px] w-full mx-auto">
+          {/* Global COGS warning — appears across all tabs if COGS is unconfigured */}
+          <CogsWarning />
+
           {/* KPI Cards */}
           <SummaryCards />
 
-          {/* Marketing Direction + Alerts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <MarketingDirection />
-            </div>
-            <div>
-              <AlertsPanel />
-            </div>
-          </div>
+          {/* Dashboard tabs */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="products">Products P&amp;L</TabsTrigger>
+              <TabsTrigger value="ltv">LTV</TabsTrigger>
+              <TabsTrigger value="experiments">Experiments</TabsTrigger>
+            </TabsList>
 
-          {/* ROI Trend Chart */}
-          <ROITrendChart />
+            {/* Overview tab */}
+            <TabsContent value="overview" className="space-y-6 mt-6">
+              {/* Marketing Direction + Alerts */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <MarketingDirection />
+                </div>
+                <div>
+                  <AlertsPanel />
+                </div>
+              </div>
 
-          {/* Campaign Table */}
-          <CampaignTable />
+              {/* Attribution breakdown */}
+              <AttributionBreakdown />
 
-          {/* WhatsApp Notification Preview */}
-          <WhatsAppPreview />
+              {/* ROI Trend Chart */}
+              <ROITrendChart />
+
+              {/* Campaign Table */}
+              <CampaignTable />
+
+              {/* WhatsApp Notification Preview */}
+              <WhatsAppPreview />
+            </TabsContent>
+
+            {/* Products P&L tab */}
+            <TabsContent value="products" className="mt-6">
+              <ProductPL />
+            </TabsContent>
+
+            {/* LTV tab */}
+            <TabsContent value="ltv" className="space-y-6 mt-6">
+              <CogsWarning />
+              <LTVTrackerV2 />
+            </TabsContent>
+
+            {/* Experiments tab */}
+            <TabsContent value="experiments" className="mt-6">
+              <ExperimentsPanel />
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 

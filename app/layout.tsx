@@ -5,6 +5,7 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Inter } from 'next/font/google';
 import SWRProvider from '@/components/providers/SWRProvider';
+import OnboardingGuard from '@/components/providers/OnboardingGuard';
 import { Toaster } from 'sonner';
 import './globals.css';
 import { cn } from "@/lib/utils";
@@ -31,7 +32,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
       <body className="font-sans antialiased bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-50 min-h-screen">
         <SWRProvider>
-          {children}
+          <OnboardingGuard>
+            {children}
+          </OnboardingGuard>
           <Toaster position="top-right" richColors />
         </SWRProvider>
       </body>

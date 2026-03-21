@@ -4,18 +4,21 @@
 
 'use client';
 
-import { Menu, Settings } from 'lucide-react';
+import { Menu, Settings, Bell } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils';
 import type { RangeDays, ViewMode } from '@/types';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import { SidebarNav } from '@/components/layout/Sidebar';
+import NotificationCentre from '@/components/notifications/NotificationCentre';
 
 const RANGES: RangeDays[] = [7, 30, 90];
 
 /** Top bar with date range selection, view mode toggle, and settings access. */
 export default function Topbar(): React.JSX.Element {
-  const { range, viewMode, setRange, setViewMode, toggleSettings } = useUIStore();
+  const { range, viewMode, setRange, setViewMode, toggleSettings, notifications } = useUIStore();
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3">
@@ -78,6 +81,21 @@ export default function Topbar(): React.JSX.Element {
           </button>
         ))}
       </div>
+
+      {/* Notification bell */}
+      <NotificationCentre>
+        <button
+          aria-label="Open notifications"
+          className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <Bell size={16} />
+          {unreadCount > 0 && (
+            <Badge className="absolute -top-1 -right-1 w-4 h-4 p-0 flex items-center justify-center text-[10px] bg-red-500 text-white border-0">
+              {unreadCount}
+            </Badge>
+          )}
+        </button>
+      </NotificationCentre>
 
       {/* Settings */}
       <button

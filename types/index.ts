@@ -60,3 +60,61 @@ export interface NotificationPayload {
 
 export type RangeDays = 7 | 30 | 90;
 export type ViewMode = 'roi' | 'roas';
+
+export type OnboardStep = 1 | 2 | 3 | 4;
+
+export type NotificationSeverity = 'success' | 'warning' | 'danger' | 'info';
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  time: string;
+  severity: NotificationSeverity;
+  read: boolean;
+}
+
+export interface ProductGroup {
+  category: string;
+  supplierCost: number;
+  freight: number;
+  packaging: number;
+  avgSellingPrice: number;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  revenue: number;
+  units: number;
+  cogs: number;        // fraction e.g. 0.38
+  adSpend: number;
+  price: number;
+}
+
+export interface Experiment {
+  id: string;
+  name: string;
+  channel: Channel;
+  status: 'running' | 'completed' | 'planned';
+  testRev: number;
+  controlRev: number;
+  spend: number;
+  startDate: string;
+  endDate: string;
+  lift: number;
+  confidence: number;
+  hypothesis?: string;
+}
+
+export interface LTVCohort {
+  month: string;
+  ltv: number;
+  cac: number;
+  ltvCacRatio: number;
+  repeatRate: number;
+  orders: number;
+  customers: number;
+}

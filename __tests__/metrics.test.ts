@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { computePeriod, computeTrend, getDailyROI, getSparkline } from '../lib/metrics';
 import { generateInsights, generateNotificationText, generateAlerts } from '../lib/insights';
-import { MOCK_CAMPAIGNS, MOCK_DAILY_ORDERS, MOCK_DAILY_REFUNDS } from '../lib/mockData';
-import type { Campaign, PeriodResult, StoreSettings } from '../types';
+import { MOCK_CAMPAIGNS, MOCK_DAILY_ORDERS, MOCK_DAILY_REFUNDS, PRODUCT_GROUP_DEFAULTS } from '../lib/mockData';
+import type { Campaign, PeriodResult, StoreSettings, ProductGroup } from '../types';
 
 const DEFAULT_SETTINGS: StoreSettings = {
   cogs: 0.38,
@@ -193,5 +193,110 @@ describe('generateAlerts', () => {
     const dailyROI = getDailyROI(MOCK_CAMPAIGNS, MOCK_DAILY_ORDERS, 30, DEFAULT_SETTINGS);
     const alerts = generateAlerts(current, previous, dailyROI);
     expect(Array.isArray(alerts)).toBe(true);
+  });
+});
+
+// ── Break-even ROAS ───────────────────────────────────────────────────────────
+
+describe('break-even ROAS', () => {
+  function calcBreakEvenROAS(
+    price: number,
+    cogsFraction: number,
+    shippingPerOrder: number,
+    refundRate: number,
+    paymentFee: number,
+  ): number {
+    const denominator =
+      price
+      - price * cogsFraction
+      - shippingPerOrder
+      - price * refundRate
+      - price * paymentFee;
+    return denominator > 0 ? price / denominator : 0;
+  }
+
+  it('returns correct ROAS for a profitable product', () => {
+    const roas = calcBreakEvenROAS(100, 0.38, 5.50, 0.028, 0.029);
+    // denominator = 100 - 38 - 5.50 - 2.80 - 2.90 = 50.80
+    expect(roas).toBeCloseTo(100 / 50.80, 3);
+  });
+
+  it('returns higher ROAS when COGS is higher (harder to break even)', () => {
+    const roasLow  = calcBreakEvenROAS(100, 0.30, 5.50, 0.028, 0.029);
+    const roasHigh = calcBreakEvenROAS(100, 0.55, 5.50, 0.028, 0.029);
+    expect(roasHigh).toBeGreaterThan(roasLow);
+  });
+
+  it('returns 0 when costs exceed price (not viable)', () => {
+    const roas = calcBreakEvenROAS(10, 0.90, 5.50, 0.028, 0.029);
+    expect(roas).toBe(0);
+  });
+
+  it('ROAS always >= 1 for viable products', () => {
+    const roas = calcBreakEvenROAS(150, 0.38, 5.50, 0.028, 0.029);
+    expect(roas).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── Blended COGS from product groups ─────────────────────────────────────────
+
+describe('blended COGS from product groups', () => {
+  function blendedCogs(groups: ProductGroup[]): number {
+    const totalRev = groups.reduce((s, g) => s + g.avgSellingPrice, 0);
+    if (totalRev === 0) return 0;
+    const totalCost = groups.reduce((s, g) => s + g.supplierCost + g.freight + g.packaging, 0);
+    return totalCost / totalRev;
+  }
+
+  it('returns a value between 0 and 1', () => {
+    const blended = blendedCogs(PRODUCT_GROUP_DEFAULTS);
+    expect(blended).toBeGreaterThan(0);
+    expect(blended).toBeLessThan(1);
+  });
+
+  it('defaults are in a realistic 18–60% range', () => {
+    const pct = blendedCogs(PRODUCT_GROUP_DEFAULTS) * 100;
+    expect(pct).toBeGreaterThan(18);
+    expect(pct).toBeLessThan(60);
+  });
+
+  it('returns 0 when selling prices are all 0', () => {
+    const zeroGroups = PRODUCT_GROUP_DEFAULTS.map((g) => ({ ...g, avgSellingPrice: 0 }));
+    expect(blendedCogs(zeroGroups)).toBe(0);
+  });
+
+  it('single group returns cogsPct for that group', () => {
+    const single: ProductGroup[] = [{ category: 'Test', supplierCost: 20, freight: 2, packaging: 1, avgSellingPrice: 100 }];
+    expect(blendedCogs(single)).toBeCloseTo(0.23, 5);
+  });
+});
+
+// ── Attribution weight calculations ──────────────────────────────────────────
+
+describe('attribution weight calculations', () => {
+  const ATTR_WEIGHTS = {
+    first:  { Meta: 0.60, Google: 0.15, TikTok: 0.20, Email: 0.05 },
+    last:   { Meta: 0.25, Google: 0.20, TikTok: 0.45, Email: 0.10 },
+    linear: { Meta: 0.25, Google: 0.25, TikTok: 0.25, Email: 0.25 },
+  };
+
+  for (const [model, weights] of Object.entries(ATTR_WEIGHTS)) {
+    it(`${model} model sums to 1.0`, () => {
+      const total = Object.values(weights).reduce((s, v) => s + v, 0);
+      expect(total).toBeCloseTo(1.0, 10);
+    });
+
+    it(`${model} model — all weights are between 0 and 1`, () => {
+      Object.values(weights).forEach((w) => {
+        expect(w).toBeGreaterThanOrEqual(0);
+        expect(w).toBeLessThanOrEqual(1);
+      });
+    });
+  }
+
+  it('linear model has equal weights for all 4 channels', () => {
+    const weights = Object.values(ATTR_WEIGHTS.linear);
+    const first = weights[0];
+    weights.forEach((w) => expect(w).toBeCloseTo(first, 10));
   });
 });
