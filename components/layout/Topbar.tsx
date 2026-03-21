@@ -4,10 +4,12 @@
 
 'use client';
 
-import { Settings } from 'lucide-react';
+import { Menu, Settings } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils';
 import type { RangeDays, ViewMode } from '@/types';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { SidebarNav } from '@/components/layout/Sidebar';
 
 const RANGES: RangeDays[] = [7, 30, 90];
 
@@ -17,6 +19,22 @@ export default function Topbar(): React.JSX.Element {
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3">
+      {/* Mobile sidebar trigger */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <button
+            aria-label="Open navigation"
+            className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <Menu size={16} />
+          </button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-[220px] p-0 flex flex-col">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SidebarNav />
+        </SheetContent>
+      </Sheet>
+
       {/* Store badge */}
       <div className="flex items-center gap-2 mr-auto">
         <span className="font-semibold text-gray-900 dark:text-white text-sm">Blank</span>

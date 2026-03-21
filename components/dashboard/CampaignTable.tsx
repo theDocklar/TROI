@@ -12,6 +12,8 @@ import { useCampaigns } from '@/hooks/useCampaigns';
 import { useUIStore } from '@/store/uiStore';
 import { formatCurrency, formatPercent, formatROAS, cn } from '@/lib/utils';
 import type { CampaignMetrics, Channel } from '@/types';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 
 type SortKey = 'name' | 'channel' | 'spend' | 'revenue' | 'roas' | 'roi';
 type SortDir = 'asc' | 'desc';
@@ -58,11 +60,11 @@ function SortIcon({ col, sort }: { col: SortKey; sort: { key: SortKey; dir: Sort
 
 function SkeletonRow(): React.JSX.Element {
   return (
-    <tr className="animate-pulse">
+    <TableRow className="animate-pulse">
       {Array.from({ length: 7 }).map((_, i) => (
-        <td key={i} className="px-4 py-3"><div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+        <TableCell key={i} className="px-4 py-3"><div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20" /></TableCell>
       ))}
-    </tr>
+    </TableRow>
   );
 }
 
@@ -94,18 +96,18 @@ export default function CampaignTable(): React.JSX.Element {
   };
 
   const Th = ({ label, col }: { label: string; col: SortKey }): React.JSX.Element => (
-    <th
+    <TableHead
       onClick={() => toggleSort(col)}
-      className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none whitespace-nowrap"
+      className="px-4 py-3 text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-white select-none whitespace-nowrap"
     >
       <div className="flex items-center gap-1">{label}<SortIcon col={col} sort={sort} /></div>
-    </th>
+    </TableHead>
   );
 
   return (
-    <section className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-2">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mr-3">Campaigns</h2>
+    <Card>
+      <CardHeader className="border-b border-gray-100 dark:border-gray-800 flex-row flex-wrap items-center gap-2 space-y-0 py-4">
+        <CardTitle className="text-base font-semibold mr-3">Campaigns</CardTitle>
         {CHANNELS.map((ch) => (
           <button
             key={ch}
@@ -120,46 +122,46 @@ export default function CampaignTable(): React.JSX.Element {
             {ch}
           </button>
         ))}
-      </div>
+      </CardHeader>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px]">
-          <thead className="bg-gray-50 dark:bg-gray-800/50">
-            <tr>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+            <TableRow>
               <Th label="Campaign" col="name" />
               <Th label="Channel" col="channel" />
               <Th label="Spend" col="spend" />
               <Th label="Revenue" col="revenue" />
               <Th label="ROAS" col="roas" />
               <Th label="True ROI" col="roi" />
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <TableHead className="px-4 py-3 text-gray-500 dark:text-gray-400">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
               : sorted.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-900 min-w-[180px]">
+                <TableRow key={c.id}>
+                  <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-900 min-w-[180px]">
                     {c.name}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
                     <span className={cn('px-2 py-0.5 text-[10px] font-semibold rounded-full', CHANNEL_COLORS[c.channel])}>
                       {c.channel}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                     <SpendBar spend={c.spend} max={maxSpend} />
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{formatCurrency(c.revenue)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{formatROAS(c.roas)}</td>
-                  <td className={cn('px-4 py-3 text-sm', roiColor(c.roi))}>{formatPercent(c.roi)}</td>
-                  <td className="px-4 py-3"><Badge roi={c.roi} /></td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{formatCurrency(c.revenue)}</TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{formatROAS(c.roas)}</TableCell>
+                  <TableCell className={cn('px-4 py-3 text-sm', roiColor(c.roi))}>{formatPercent(c.roi)}</TableCell>
+                  <TableCell className="px-4 py-3"><Badge roi={c.roi} /></TableCell>
+                </TableRow>
               ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

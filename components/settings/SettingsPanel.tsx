@@ -13,6 +13,8 @@ import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { StoreSettings } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface FieldConfig {
   key: keyof StoreSettings;
@@ -124,24 +126,21 @@ export default function SettingsPanel(): React.JSX.Element {
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
           {FIELDS.map((f) => (
             <div key={f.key}>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <Label className="mb-1 text-sm text-gray-700 dark:text-gray-300">
                 {f.label}
-              </label>
+              </Label>
               <div className="relative">
                 {f.unit === '$' && (
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                 )}
-                <input
+                <Input
                   type="number"
                   min={f.min}
                   max={f.max}
                   step={f.step}
                   value={draft[f.key] ?? ''}
                   onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
-                  className={cn(
-                    'w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                    f.unit === '$' ? 'pl-7' : 'pl-3',
-                  )}
+                  className={cn('h-9 pr-8', f.unit === '$' ? 'pl-7' : 'pl-3')}
                 />
                 {f.unit === '%' && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>

@@ -14,6 +14,7 @@ import { getDailyROI } from '@/lib/metrics';
 import { MOCK_CAMPAIGNS, MOCK_DAILY_ORDERS } from '@/lib/mockData';
 import { DEFAULT_SETTINGS } from '@/lib/settingsStore';
 import type { RangeDays } from '@/types';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 function buildChartData(range: RangeDays): { date: string; roi: number }[] {
   const dailyROI = getDailyROI(MOCK_CAMPAIGNS, MOCK_DAILY_ORDERS, range, DEFAULT_SETTINGS);
@@ -53,36 +54,40 @@ export default function ROITrendChart(): React.JSX.Element {
     .map((d) => d.date);
 
   return (
-    <section className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">True ROI Trend</h2>
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:stroke-gray-800" />
-          <XAxis
-            dataKey="date"
-            ticks={xTicks}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v: number) => `${v}%`}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5} />
-          <Line
-            type="monotone"
-            dataKey="roi"
-            stroke="#6366f1"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4, fill: '#6366f1' }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base font-semibold">True ROI Trend</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:stroke-gray-800" />
+            <XAxis
+              dataKey="date"
+              ticks={xTicks}
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v: number) => `${v}%`}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5} />
+            <Line
+              type="monotone"
+              dataKey="roi"
+              stroke="#6366f1"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, fill: '#6366f1' }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
   );
 }

@@ -12,6 +12,7 @@ import { useInsights } from '@/hooks/useInsights';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils';
 import type { Insight } from '@/types';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   TrendingUp: <TrendingUp size={16} />,
@@ -81,18 +82,20 @@ export default function MarketingDirection(): React.JSX.Element {
   const { insights, isLoading } = useInsights(range);
 
   return (
-    <section className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
-      <div className="flex items-center gap-2 mb-4">
+    <Card>
+      <CardHeader className="flex-row items-center gap-2 space-y-0">
         <Compass size={18} className="text-indigo-500" />
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Marketing Direction</h2>
+        <CardTitle className="text-base font-semibold">Marketing Direction</CardTitle>
         <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">{range}-day view</span>
-      </div>
+      </CardHeader>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {isLoading || !insights
-          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-          : insights.map((insight, i) => <InsightCard key={i} insight={insight} />)}
-      </div>
-    </section>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {isLoading || !insights
+            ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+            : insights.map((insight, i) => <InsightCard key={i} insight={insight} />)}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

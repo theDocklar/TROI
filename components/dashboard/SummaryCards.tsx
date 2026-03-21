@@ -14,14 +14,17 @@ import { formatCurrency, formatPercent, formatROAS } from '@/lib/utils';
 import { MOCK_CAMPAIGNS } from '@/lib/mockData';
 import Sparkline from './Sparkline';
 import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 
 function SkeletonCard(): React.JSX.Element {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 animate-pulse">
-      <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-      <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-      <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-    </div>
+    <Card className="animate-pulse">
+      <CardContent>
+        <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+        <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -35,30 +38,32 @@ interface CardProps {
   tooltip: string;
 }
 
-function Card({ label, value, trend, sparkData, sparkColor, icon, tooltip }: CardProps): React.JSX.Element {
+function KpiCard({ label, value, trend, sparkData, sparkColor, icon, tooltip }: CardProps): React.JSX.Element {
   const positive = trend >= 0;
   return (
-    <div
-      className="group relative bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-md transition-shadow"
+    <Card
+      className="group relative hover:shadow-md transition-shadow"
       title={tooltip}
     >
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-          <span className="text-gray-400 dark:text-gray-500">{icon}</span>
-          {label}
-        </span>
-        <Sparkline data={sparkData} color={sparkColor} />
-      </div>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{value}</p>
-      <div className={cn('flex items-center gap-1 text-xs font-medium', positive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')}>
-        {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-        {positive ? '+' : ''}{trend.toFixed(1)}% vs prior period
-      </div>
-      {/* Tooltip */}
-      <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block w-56 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 z-10 shadow-xl pointer-events-none">
-        {tooltip}
-      </div>
-    </div>
+      <CardContent>
+        <div className="flex items-start justify-between mb-3">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+            <span className="text-gray-400 dark:text-gray-500">{icon}</span>
+            {label}
+          </span>
+          <Sparkline data={sparkData} color={sparkColor} />
+        </div>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{value}</p>
+        <div className={cn('flex items-center gap-1 text-xs font-medium', positive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400')}>
+          {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          {positive ? '+' : ''}{trend.toFixed(1)}% vs prior period
+        </div>
+        {/* Tooltip */}
+        <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block w-56 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 z-10 shadow-xl pointer-events-none">
+          {tooltip}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -141,7 +146,7 @@ export default function SummaryCards(): React.JSX.Element {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      {cards.map((c) => <Card key={c.label} {...c} />)}
+      {cards.map((c) => <KpiCard key={c.label} {...c} />)}
     </div>
   );
 }

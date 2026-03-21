@@ -8,12 +8,12 @@ import { LayoutDashboard, Settings } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils';
 
-/** Left-side navigation sidebar for the ROI Intelligence dashboard. */
-export default function Sidebar(): React.JSX.Element {
+/** Shared nav content rendered in both the desktop aside and the mobile Sheet. */
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void }): React.JSX.Element {
   const toggleSettings = useUIStore((s) => s.toggleSettings);
 
   return (
-    <aside className="hidden md:flex flex-col w-[220px] shrink-0 h-screen sticky top-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+    <>
       {/* Logo */}
       <div className="px-5 py-5 flex items-center gap-2 border-b border-gray-100 dark:border-gray-800">
         <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
@@ -25,7 +25,7 @@ export default function Sidebar(): React.JSX.Element {
       <nav className="flex-1 px-3 py-4 space-y-1">
         <NavItem icon={<LayoutDashboard size={16} />} label="Dashboard" active />
         <button
-          onClick={toggleSettings}
+          onClick={() => { toggleSettings(); onNavigate?.(); }}
           className={cn(
             'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
             'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white',
@@ -44,6 +44,15 @@ export default function Sidebar(): React.JSX.Element {
           True ROI accounts for all of those — it shows real profit.
         </p>
       </div>
+    </>
+  );
+}
+
+/** Left-side navigation sidebar for the ROI Intelligence dashboard. */
+export default function Sidebar(): React.JSX.Element {
+  return (
+    <aside className="hidden md:flex flex-col w-[220px] shrink-0 h-screen sticky top-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+      <SidebarNav />
     </aside>
   );
 }
