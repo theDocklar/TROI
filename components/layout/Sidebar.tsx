@@ -15,7 +15,11 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }): React.J
   const router = useRouter();
 
   function handleSignOut(): void {
+    localStorage.removeItem('troi_token');
     localStorage.removeItem('troi_authed');
+    localStorage.removeItem('troi_user_email');
+    localStorage.removeItem('troi_user_name');
+    localStorage.removeItem('troi_onboarded');
     router.replace('/signin');
   }
 
