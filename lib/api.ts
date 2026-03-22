@@ -75,7 +75,7 @@ export const shopifyApi = {
     request<{ url: string }>(`/api/shopify/connect?shop=${encodeURIComponent(shop)}`, { token }),
 
   callback: (
-    params: { shop: string; code: string; hmac: string; state: string; timestamp: string },
+    params: Record<string, string>,
     token: string,
   ) => request<{ shop: ShopInfo }>('/api/shopify/callback', { method: 'POST', body: params, token }),
 

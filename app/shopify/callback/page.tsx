@@ -24,13 +24,12 @@ export default function ShopifyCallbackPage(): React.JSX.Element {
       return;
     }
 
-    const shop      = params.get('shop') ?? '';
-    const code      = params.get('code') ?? '';
-    const hmac      = params.get('hmac') ?? '';
-    const state     = params.get('state') ?? '';
-    const timestamp = params.get('timestamp') ?? '';
+    // Forward ALL params Shopify sends (includes host, shop, code, hmac, state, timestamp)
+    // HMAC is verified server-side over all params — must not filter any out
+    const allParams: Record<string, string> = {};
+    params.forEach((value, key) => { allParams[key] = value; });
 
-    if (!shop || !code || !hmac || !state || !timestamp) {
+    if (!allParams.shop || !allParams.code || !allParams.hmac || !allParams.state) {
       setError('Missing OAuth parameters. Please try connecting your store again.');
       return;
     }
@@ -42,7 +41,7 @@ export default function ShopifyCallbackPage(): React.JSX.Element {
     }
 
     shopifyApi
-      .callback({ shop, code, hmac, state, timestamp }, token)
+      .callback(allParams, token)
       .then(({ shop: shopInfo }) => {
         localStorage.setItem('troi_shopify_shop', JSON.stringify(shopInfo));
         router.replace('/onboard');
