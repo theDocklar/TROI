@@ -13,12 +13,15 @@ import { Label } from '@/components/ui/label';
 interface Props {
   onComplete: () => void;
   onBack: () => void;
+  initialRefundRate?: number; // real rate from Shopify orders (fraction, e.g. 0.028)
 }
 
 /** Step 4 of onboarding: confirm shipping/refund/payment defaults before going to dashboard. */
-export default function ConfirmCosts({ onComplete, onBack }: Props): React.JSX.Element {
+export default function ConfirmCosts({ onComplete, onBack, initialRefundRate }: Props): React.JSX.Element {
   const [shipping, setShipping] = useState('5.50');
-  const [refundRate, setRefundRate] = useState('2.8');
+  const [refundRate, setRefundRate] = useState(
+    initialRefundRate != null ? (initialRefundRate * 100).toFixed(1) : '2.8',
+  );
   const [paymentFee, setPaymentFee] = useState('2.9');
 
   function handleComplete(): void {
@@ -65,7 +68,11 @@ export default function ConfirmCosts({ onComplete, onBack }: Props): React.JSX.E
             value={refundRate}
             onChange={(e) => setRefundRate(e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">Calculated from last 90 days — mock: 2.8%</p>
+          <p className="text-xs text-muted-foreground">
+            {initialRefundRate != null
+              ? `Calculated from your last 60 days of Shopify orders`
+              : 'Estimated default — connect Shopify for your real rate'}
+          </p>
         </div>
 
         <div className="space-y-1.5">

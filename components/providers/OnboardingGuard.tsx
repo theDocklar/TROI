@@ -17,7 +17,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
 
 const AUTH_ROUTES     = ['/signin', '/signup', '/forgot-password'];
-const EXEMPT_PREFIXES = ['/signin', '/signup', '/forgot-password', '/onboard'];
+const EXEMPT_PREFIXES = ['/signin', '/signup', '/forgot-password', '/onboard', '/shopify/callback'];
 
 function clearAuth(): void {
   localStorage.removeItem('troi_authed');

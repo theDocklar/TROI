@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PRODUCT_GROUP_DEFAULTS } from '@/lib/mockData';
+import { shopifyApi, type ShopifyProduct } from '@/lib/api';
 import type { ProductGroup } from '@/types';
 
 type CogsPath = 'product' | 'shopify' | 'benchmark' | null;
@@ -48,6 +49,9 @@ export default function CogsSetup({ onContinue, onBack, onSkip }: Props): React.
   const [groups, setGroups] = useState<ProductGroup[]>(structuredClone(PRODUCT_GROUP_DEFAULTS));
   const [shopifyImporting, setShopifyImporting] = useState(false);
   const [shopifyDone, setShopifyDone] = useState(false);
+  const [shopifyImportedCount, setShopifyImportedCount] = useState(0);
+  const [shopifyBlendedCogs, setShopifyBlendedCogs] = useState(0.36);
+  const [shopifyImportError, setShopifyImportError] = useState<string | null>(null);
   const [selectedBenchmark, setSelectedBenchmark] = useState<string | null>(null);
 
   function updateGroup(idx: number, field: keyof ProductGroup, value: number): void {
@@ -68,9 +72,46 @@ export default function CogsSetup({ onContinue, onBack, onSkip }: Props): React.
     onContinue();
   }
 
-  function handleShopifyImport(): void {
+  async function handleShopifyImport(): Promise<void> {
+    setShopifyImportError(null);
     setShopifyImporting(true);
-    setTimeout(() => { setShopifyImporting(false); setShopifyDone(true); }, 2000);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('troi_token') : null;
+    if (!token) { setShopifyImporting(false); setShopifyImportError('Not signed in.'); return; }
+
+    try {
+      const { products } = await shopifyApi.getProducts(token);
+      // Group products by productType, compute avg selling price per group
+      const grouped = new Map<string, number[]>();
+      for (const p of products) {
+        const type = p.productType || 'Other';
+        const prices = p.variants.map((v) => v.price).filter((x) => x > 0);
+        if (!grouped.has(type)) grouped.set(type, []);
+        grouped.get(type)!.push(...prices);
+      }
+      // Build updated ProductGroups using real avg selling prices
+      const updatedGroups: ProductGroup[] = [...grouped.entries()].slice(0, 5).map(([cat, prices]) => {
+        const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+        const existing = PRODUCT_GROUP_DEFAULTS.find((g) => g.category.toLowerCase() === cat.toLowerCase());
+        return existing
+          ? { ...existing, avgSellingPrice: avg }
+          : { category: cat, supplierCost: avg * 0.3, freight: avg * 0.04, packaging: avg * 0.02, avgSellingPrice: avg };
+      });
+
+      if (updatedGroups.length > 0) setGroups(updatedGroups);
+
+      // Compute blended COGS from updated groups
+      const totalRev = updatedGroups.reduce((s, g) => s + g.avgSellingPrice, 0);
+      const totalCost = updatedGroups.reduce((s, g) => s + g.supplierCost + g.freight + g.packaging, 0);
+      const computed = totalRev > 0 ? totalCost / totalRev : 0.36;
+
+      setShopifyImportedCount(products.length);
+      setShopifyBlendedCogs(computed);
+      setShopifyDone(true);
+    } catch (err) {
+      setShopifyImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setShopifyImporting(false);
+    }
   }
 
   const blended = blendedCogs(groups);
@@ -180,28 +221,30 @@ export default function CogsSetup({ onContinue, onBack, onSkip }: Props): React.
         <div className="space-y-4">
           {!shopifyDone ? (
             <div className="text-center py-6 space-y-3">
+              {shopifyImportError && (
+                <p className="text-xs text-red-500">{shopifyImportError}</p>
+              )}
               <Button onClick={handleShopifyImport} disabled={shopifyImporting}>
                 {shopifyImporting ? 'Importing…' : 'Import from Shopify'}
               </Button>
+              <div className="flex justify-between pt-2">
+                <Button variant="ghost" size="sm" onClick={() => setPath(null)}>Back</Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
               <div className="bg-muted rounded-lg p-4 space-y-1">
-                <p className="text-sm font-medium">12 products imported</p>
-                <p className="text-sm text-muted-foreground">Shopify COGS: <strong>28.4%</strong></p>
-                <p className="text-xs text-muted-foreground">
-                  Suggested adjustment: +8% for freight + packaging = <strong>36% recommended</strong>
+                <p className="text-sm font-medium">{shopifyImportedCount} products imported</p>
+                <p className="text-sm text-muted-foreground">
+                  Blended COGS from Shopify: <strong>{(shopifyBlendedCogs * 100).toFixed(1)}%</strong>
                 </p>
               </div>
               <div className="flex justify-between">
                 <Button variant="ghost" size="sm" onClick={() => setPath(null)}>Back</Button>
-                <Button size="sm" onClick={() => saveAndContinue(0.36)}>Use 36%</Button>
+                <Button size="sm" onClick={() => saveAndContinue(shopifyBlendedCogs)}>
+                  Use {(shopifyBlendedCogs * 100).toFixed(1)}%
+                </Button>
               </div>
-            </div>
-          )}
-          {!shopifyDone && (
-            <div className="flex justify-between">
-              <Button variant="ghost" size="sm" onClick={() => setPath(null)}>Back</Button>
             </div>
           )}
         </div>

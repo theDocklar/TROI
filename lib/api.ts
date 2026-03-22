@@ -43,3 +43,51 @@ export const authApi = {
   me: (token: string) =>
     request<{ user: AuthUser }>('/api/auth/me', { token }),
 };
+
+// ── Shopify types ────────────────────────────────────────────────────────────
+
+export type ShopInfo = {
+  domain: string;
+  shopName: string;
+  currency: string;
+  plan: string;
+};
+
+export type ShopifyOrdersData = {
+  dailyRevenue: number[];
+  dailyOrders: number[];
+  dailyRefundAmount: number[];
+  refundRate: number;
+  days: number;
+};
+
+export type ShopifyProduct = {
+  id: string;
+  title: string;
+  productType: string;
+  variants: { sku: string; price: number }[];
+};
+
+// ── Shopify API client ───────────────────────────────────────────────────────
+
+export const shopifyApi = {
+  getConnectUrl: (shop: string, token: string) =>
+    request<{ url: string }>(`/api/shopify/connect?shop=${encodeURIComponent(shop)}`, { token }),
+
+  callback: (
+    params: { shop: string; code: string; hmac: string; state: string; timestamp: string },
+    token: string,
+  ) => request<{ shop: ShopInfo }>('/api/shopify/callback', { method: 'POST', body: params, token }),
+
+  status: (token: string) =>
+    request<{ connected: boolean; shop?: ShopInfo }>('/api/shopify/status', { token }),
+
+  getOrders: (token: string, days = 60) =>
+    request<ShopifyOrdersData>(`/api/shopify/orders?days=${days}`, { token }),
+
+  getProducts: (token: string) =>
+    request<{ products: ShopifyProduct[] }>('/api/shopify/products', { token }),
+
+  disconnect: (token: string) =>
+    request<{ message: string }>('/api/shopify/disconnect', { method: 'POST', token }),
+};
