@@ -15,10 +15,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const rawRange = Number(searchParams.get('range') ?? '30');
   const range: RangeDays = ([7, 30, 90].includes(rawRange) ? rawRange : 30) as RangeDays;
 
-  const shop  = searchParams.get('shop') ?? null;
-  const token = req.headers.get('authorization')?.replace('Bearer ', '') ?? null;
+  const shop         = searchParams.get('shop') ?? null;
+  const token        = req.headers.get('authorization')?.replace('Bearer ', '') ?? null;
+  const metaConnected = searchParams.get('meta') === '1';
 
-  const { campaigns, dailyOrders, dailyRefunds, refundRate } = await getCampaignData(shop, token);
+  const { campaigns, dailyOrders, dailyRefunds, refundRate } = await getCampaignData(shop, token, metaConnected);
 
   const settings = getSettings();
   const effectiveSettings = shop ? { ...settings, refundRate } : settings;

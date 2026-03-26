@@ -8,10 +8,15 @@
 import useSWR from 'swr';
 import type { CampaignMetrics, RangeDays } from '@/types';
 import { getShopifyContext } from '@/lib/shopifyContext';
+import { getMetaContext } from '@/lib/metaContext';
 
 function buildKey(range: RangeDays): string {
   const { shop, token } = getShopifyContext();
-  return shop ? `/api/campaigns?range=${range}&shop=${encodeURIComponent(shop)}&_t=${token?.slice(-8)}` : `/api/campaigns?range=${range}`;
+  const { account: metaAccount } = getMetaContext();
+  const metaParam = metaAccount ? `&meta=1&_m=${metaAccount.adAccountId.slice(-6)}` : '';
+  return shop
+    ? `/api/campaigns?range=${range}&shop=${encodeURIComponent(shop)}&_t=${token?.slice(-8)}${metaParam}`
+    : `/api/campaigns?range=${range}${metaParam}`;
 }
 
 function buildFetcher(range: RangeDays) {

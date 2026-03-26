@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { metaApi } from '@/lib/api';
+import { getMetaContext } from '@/lib/metaContext';
 
 interface ChannelCard {
   id: string;
@@ -40,19 +42,42 @@ export function getStoredChannels(): Record<string, boolean> {
 interface Props {
   onContinue: () => void;
   onBack: () => void;
+  metaError?: string | null;
 }
 
 /** Step 2 of onboarding: connect ad channels via simulated OAuth. */
-export default function ConnectChannels({ onContinue, onBack }: Props): React.JSX.Element {
+export default function ConnectChannels({ onContinue, onBack, metaError }: Props): React.JSX.Element {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [pending, setPending] = useState<Record<string, boolean>>({});
 
   // Restore any previously saved state (e.g. re-running onboarding)
   useEffect(() => {
-    setConnected(getStoredChannels());
+    const stored = getStoredChannels();
+    // Also reflect Meta if it was connected via real OAuth (troi_meta_account)
+    const { account } = getMetaContext();
+    if (account) stored.meta = true;
+    setConnected(stored);
   }, []);
 
+  async function handleConnectMeta(): Promise<void> {
+    setPending((p) => ({ ...p, meta: true }));
+    try {
+      const token = localStorage.getItem('troi_token');
+      if (!token) { setPending((p) => ({ ...p, meta: false })); return; }
+      const { url } = await metaApi.getConnectUrl(token);
+      // Redirect to Meta OAuth — the callback page will return us here
+      window.location.href = url;
+    } catch {
+      setPending((p) => ({ ...p, meta: false }));
+    }
+  }
+
   function handleConnect(id: string): void {
+    if (id === 'meta') {
+      void handleConnectMeta();
+      return;
+    }
+    // Other channels: keep mock flow until their OAuth is implemented
     setPending((p) => ({ ...p, [id]: true }));
     setTimeout(() => {
       setPending((p) => ({ ...p, [id]: false }));
@@ -65,6 +90,12 @@ export default function ConnectChannels({ onContinue, onBack }: Props): React.JS
   }
 
   function handleDisconnect(id: string): void {
+    if (id === 'meta') {
+      // Remove stored account and call backend disconnect (fire-and-forget)
+      localStorage.removeItem('troi_meta_account');
+      const token = localStorage.getItem('troi_token');
+      if (token) void metaApi.disconnect(token).catch(() => null);
+    }
     setConnected((c) => {
       const next = { ...c, [id]: false };
       localStorage.setItem('troi_channels', JSON.stringify(next));
@@ -141,6 +172,13 @@ export default function ConnectChannels({ onContinue, onBack }: Props): React.JS
           </Card>
         ))}
       </div>
+
+      {/* Meta connection error */}
+      {metaError && (
+        <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+          {metaError}
+        </p>
+      )}
 
       {/* Blurred dashboard preview */}
       <div className="relative rounded-xl overflow-hidden border h-36 bg-muted">

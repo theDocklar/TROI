@@ -9,6 +9,7 @@
 import useSWR from 'swr';
 import type { PeriodResult, RangeDays } from '@/types';
 import { getShopifyContext } from '@/lib/shopifyContext';
+import { getMetaContext } from '@/lib/metaContext';
 
 interface MetricsResponse {
   current: PeriodResult;
@@ -18,7 +19,11 @@ interface MetricsResponse {
 
 function buildKey(range: RangeDays): string {
   const { shop, token } = getShopifyContext();
-  return shop ? `/api/metrics?range=${range}&shop=${encodeURIComponent(shop)}&_t=${token?.slice(-8)}` : `/api/metrics?range=${range}`;
+  const { account: metaAccount } = getMetaContext();
+  const metaParam = metaAccount ? `&meta=1&_m=${metaAccount.adAccountId.slice(-6)}` : '';
+  return shop
+    ? `/api/metrics?range=${range}&shop=${encodeURIComponent(shop)}&_t=${token?.slice(-8)}${metaParam}`
+    : `/api/metrics?range=${range}${metaParam}`;
 }
 
 function buildFetcher(range: RangeDays) {

@@ -26,7 +26,7 @@ const STEP_LABELS = [
 export default function OnboardPage(): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { step, nextStep, prevStep, setCompleted, setSkipCogs } = useOnboardStore();
+  const { step, nextStep, prevStep, setCompleted, setSkipCogs, goToStep } = useOnboardStore();
 
   // Shopify connect state (Step 1)
   const [shopInput, setShopInput]         = useState('');
@@ -34,6 +34,7 @@ export default function OnboardPage(): React.JSX.Element {
   const [connecting, setConnecting]       = useState(false);
   const [connectError, setConnectError]   = useState<string | null>(null);
   const [shopifyRefundRate, setShopifyRefundRate] = useState<number | undefined>(undefined);
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   // If already onboarded, skip straight to dashboard
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function OnboardPage(): React.JSX.Element {
     }
   }, [router]);
 
-  // On mount: restore connected store from localStorage + check for error from callback
+  // On mount: restore connected store from localStorage + check for error/step from callback
   useEffect(() => {
     const raw = localStorage.getItem('troi_shopify_shop');
     if (raw) {
@@ -60,7 +61,15 @@ export default function OnboardPage(): React.JSX.Element {
     if (searchParams.get('shopify_error')) {
       setConnectError('Shopify connection was denied or failed. Please try again.');
     }
-  }, [searchParams]);
+    // Restore step when returning from an OAuth redirect (e.g. Meta callback)
+    const stepParam = parseInt(searchParams.get('step') ?? '', 10) as 1 | 2 | 3 | 4;
+    if ([1, 2, 3, 4].includes(stepParam)) {
+      goToStep(stepParam);
+    }
+    // Show Meta error forwarded from callback
+    const metaErr = searchParams.get('meta_error');
+    if (metaErr) setMetaError(decodeURIComponent(metaErr));
+  }, [searchParams, goToStep]);
 
   async function handleConnectShopify(): Promise<void> {
     setConnectError(null);
@@ -216,7 +225,7 @@ export default function OnboardPage(): React.JSX.Element {
 
         {/* Step 2 — Connect channels */}
         {step === 2 && (
-          <ConnectChannels onContinue={nextStep} onBack={prevStep} />
+          <ConnectChannels onContinue={nextStep} onBack={prevStep} metaError={metaError} />
         )}
 
         {/* Step 3 — COGS setup */}

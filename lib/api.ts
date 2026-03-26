@@ -91,3 +91,31 @@ export const shopifyApi = {
   disconnect: (token: string) =>
     request<{ message: string }>('/api/shopify/disconnect', { method: 'POST', token }),
 };
+
+// ── Meta types ───────────────────────────────────────────────────────────────
+
+export type MetaAccountInfo = {
+  adAccountId: string;
+  accountName: string;
+  currency: string;
+};
+
+// ── Meta API client ───────────────────────────────────────────────────────────
+
+export const metaApi = {
+  getConnectUrl: (token: string) =>
+    request<{ url: string }>('/api/meta/connect', { token }),
+
+  callback: (params: { code: string; state: string }, token: string) =>
+    request<{ account: MetaAccountInfo }>('/api/meta/callback', {
+      method: 'POST',
+      body: params,
+      token,
+    }),
+
+  status: (token: string) =>
+    request<{ connected: boolean; account?: MetaAccountInfo }>('/api/meta/status', { token }),
+
+  disconnect: (token: string) =>
+    request<{ message: string }>('/api/meta/disconnect', { method: 'POST', token }),
+};
