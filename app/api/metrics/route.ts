@@ -17,9 +17,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const shop         = searchParams.get('shop') ?? null;
   const token        = req.headers.get('authorization')?.replace('Bearer ', '') ?? null;
-  const metaConnected = searchParams.get('meta') === '1';
+  const metaConnected   = searchParams.get('meta')   === '1';
+  const googleConnected = searchParams.get('google') === '1';
 
-  const { campaigns, dailyOrders, dailyRefunds, refundRate } = await getCampaignData(shop, token, metaConnected);
+  const { campaigns, dailyOrders, dailyRefunds, refundRate } = await getCampaignData(shop, token, metaConnected, googleConnected);
 
   const settings = getSettings();
   const effectiveSettings = shop ? { ...settings, refundRate } : settings;

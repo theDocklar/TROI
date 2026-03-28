@@ -34,7 +34,8 @@ export default function OnboardPage(): React.JSX.Element {
   const [connecting, setConnecting]       = useState(false);
   const [connectError, setConnectError]   = useState<string | null>(null);
   const [shopifyRefundRate, setShopifyRefundRate] = useState<number | undefined>(undefined);
-  const [metaError, setMetaError] = useState<string | null>(null);
+  const [metaError, setMetaError]       = useState<string | null>(null);
+  const [googleError, setGoogleError]   = useState<string | null>(null);
 
   // If already onboarded, skip straight to dashboard
   useEffect(() => {
@@ -66,9 +67,11 @@ export default function OnboardPage(): React.JSX.Element {
     if ([1, 2, 3, 4].includes(stepParam)) {
       goToStep(stepParam);
     }
-    // Show Meta error forwarded from callback
-    const metaErr = searchParams.get('meta_error');
-    if (metaErr) setMetaError(decodeURIComponent(metaErr));
+    // Show channel errors forwarded from OAuth callbacks
+    const metaErr   = searchParams.get('meta_error');
+    const googleErr = searchParams.get('google_error');
+    if (metaErr)   setMetaError(decodeURIComponent(metaErr));
+    if (googleErr) setGoogleError(decodeURIComponent(googleErr));
   }, [searchParams, goToStep]);
 
   async function handleConnectShopify(): Promise<void> {
@@ -225,7 +228,7 @@ export default function OnboardPage(): React.JSX.Element {
 
         {/* Step 2 — Connect channels */}
         {step === 2 && (
-          <ConnectChannels onContinue={nextStep} onBack={prevStep} metaError={metaError} />
+          <ConnectChannels onContinue={nextStep} onBack={prevStep} metaError={metaError} googleError={googleError} />
         )}
 
         {/* Step 3 — COGS setup */}

@@ -119,3 +119,31 @@ export const metaApi = {
   disconnect: (token: string) =>
     request<{ message: string }>('/api/meta/disconnect', { method: 'POST', token }),
 };
+
+// ── Google Ads types ──────────────────────────────────────────────────────────
+
+export type GoogleAccountInfo = {
+  customerId: string;
+  accountName: string;
+  currency: string;
+};
+
+// ── Google Ads API client ─────────────────────────────────────────────────────
+
+export const googleApi = {
+  getConnectUrl: (token: string) =>
+    request<{ url: string }>('/api/google/connect', { token }),
+
+  callback: (params: { code: string; state: string }, token: string) =>
+    request<{ account: GoogleAccountInfo }>('/api/google/callback', {
+      method: 'POST',
+      body: params,
+      token,
+    }),
+
+  status: (token: string) =>
+    request<{ connected: boolean; account?: GoogleAccountInfo }>('/api/google/status', { token }),
+
+  disconnect: (token: string) =>
+    request<{ message: string }>('/api/google/disconnect', { method: 'POST', token }),
+};

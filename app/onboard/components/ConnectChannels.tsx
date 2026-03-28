@@ -12,8 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { metaApi } from '@/lib/api';
+import { metaApi, googleApi } from '@/lib/api';
 import { getMetaContext } from '@/lib/metaContext';
+import { getGoogleContext } from '@/lib/googleContext';
 
 interface ChannelCard {
   id: string;
@@ -43,19 +44,19 @@ interface Props {
   onContinue: () => void;
   onBack: () => void;
   metaError?: string | null;
+  googleError?: string | null;
 }
 
 /** Step 2 of onboarding: connect ad channels via simulated OAuth. */
-export default function ConnectChannels({ onContinue, onBack, metaError }: Props): React.JSX.Element {
+export default function ConnectChannels({ onContinue, onBack, metaError, googleError }: Props): React.JSX.Element {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
   const [pending, setPending] = useState<Record<string, boolean>>({});
 
   // Restore any previously saved state (e.g. re-running onboarding)
   useEffect(() => {
     const stored = getStoredChannels();
-    // Also reflect Meta if it was connected via real OAuth (troi_meta_account)
-    const { account } = getMetaContext();
-    if (account) stored.meta = true;
+    if (getMetaContext().account)   stored.meta   = true;
+    if (getGoogleContext().account) stored.google = true;
     setConnected(stored);
   }, []);
 
@@ -65,18 +66,27 @@ export default function ConnectChannels({ onContinue, onBack, metaError }: Props
       const token = localStorage.getItem('troi_token');
       if (!token) { setPending((p) => ({ ...p, meta: false })); return; }
       const { url } = await metaApi.getConnectUrl(token);
-      // Redirect to Meta OAuth — the callback page will return us here
       window.location.href = url;
     } catch {
       setPending((p) => ({ ...p, meta: false }));
     }
   }
 
-  function handleConnect(id: string): void {
-    if (id === 'meta') {
-      void handleConnectMeta();
-      return;
+  async function handleConnectGoogle(): Promise<void> {
+    setPending((p) => ({ ...p, google: true }));
+    try {
+      const token = localStorage.getItem('troi_token');
+      if (!token) { setPending((p) => ({ ...p, google: false })); return; }
+      const { url } = await googleApi.getConnectUrl(token);
+      window.location.href = url;
+    } catch {
+      setPending((p) => ({ ...p, google: false }));
     }
+  }
+
+  function handleConnect(id: string): void {
+    if (id === 'meta')   { void handleConnectMeta();    return; }
+    if (id === 'google') { void handleConnectGoogle();  return; }
     // Other channels: keep mock flow until their OAuth is implemented
     setPending((p) => ({ ...p, [id]: true }));
     setTimeout(() => {
@@ -90,11 +100,14 @@ export default function ConnectChannels({ onContinue, onBack, metaError }: Props
   }
 
   function handleDisconnect(id: string): void {
+    const token = localStorage.getItem('troi_token');
     if (id === 'meta') {
-      // Remove stored account and call backend disconnect (fire-and-forget)
       localStorage.removeItem('troi_meta_account');
-      const token = localStorage.getItem('troi_token');
       if (token) void metaApi.disconnect(token).catch(() => null);
+    }
+    if (id === 'google') {
+      localStorage.removeItem('troi_google_account');
+      if (token) void googleApi.disconnect(token).catch(() => null);
     }
     setConnected((c) => {
       const next = { ...c, [id]: false };
@@ -173,10 +186,15 @@ export default function ConnectChannels({ onContinue, onBack, metaError }: Props
         ))}
       </div>
 
-      {/* Meta connection error */}
+      {/* Channel connection errors */}
       {metaError && (
         <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
-          {metaError}
+          Meta: {metaError}
+        </p>
+      )}
+      {googleError && (
+        <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+          Google Ads: {googleError}
         </p>
       )}
 

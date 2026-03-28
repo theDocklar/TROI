@@ -2,13 +2,15 @@
  * shopifyData.ts
  *
  * Server-side data fetcher for Next.js API routes.
- * Returns real Shopify + Meta data when connections are present,
- * falls back to mock data otherwise.
+ * Merges real data from Shopify, Meta, and Google Ads when connected.
+ * Falls back to mock data for any channel that is not yet connected.
  *
- * Meta campaigns (channel: 'Meta') are fetched from the Meta Marketing API
- * and replace the mock Meta campaigns. Their per-campaign spend and pixel
- * purchase revenue are used as-is. Non-Meta channels continue to use mock
- * campaign shapes with Shopify revenue scaled proportionally across them.
+ * Channel resolution:
+ *  - Meta connected    → real Meta campaigns replace mock Meta campaigns
+ *  - Google connected  → real Google campaigns replace mock Google campaigns
+ *  - Shopify connected → real order totals used for COGS/shipping/refund calcs;
+ *                        Shopify revenue is distributed only across mock channels
+ *  - Nothing connected → fully mock data
  */
 
 import type { Campaign } from '@/types';
@@ -31,40 +33,37 @@ interface ShopifyOrdersResponse {
   days: number;
 }
 
-interface MetaCampaignsResponse {
+interface AdCampaignsResponse {
   campaigns: Campaign[];
   days: number;
 }
 
-/** Fetch real Meta campaigns from the Express backend. Returns [] on any error. */
-async function fetchMetaCampaigns(token: string, days: number): Promise<Campaign[]> {
+async function fetchAdCampaigns(endpoint: string, token: string, days: number): Promise<Campaign[]> {
   try {
-    const res = await fetch(`${EXPRESS_URL}/api/meta/campaigns?days=${days}`, {
+    const res = await fetch(`${EXPRESS_URL}${endpoint}?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-
     if (!res.ok) {
-      console.error(`[shopifyData] meta campaigns fetch failed: ${res.status}`);
+      console.error(`[shopifyData] ${endpoint} fetch failed: ${res.status}`);
       return [];
     }
-
-    const data = (await res.json()) as MetaCampaignsResponse;
+    const data = (await res.json()) as AdCampaignsResponse;
     return data.campaigns ?? [];
   } catch (err) {
-    console.error('[shopifyData] meta campaigns fetch error:', err);
+    console.error(`[shopifyData] ${endpoint} fetch error:`, err);
     return [];
   }
 }
 
 /**
- * Merge Shopify revenue data with campaigns.
- * - Real Meta campaigns keep their own pixel revenue.
- * - Non-Meta mock campaigns get Shopify total revenue distributed
- *   proportionally based on their existing revenue share.
+ * Distributes Shopify total daily revenue across mock campaigns for channels
+ * that have no real ad-platform data, subtracting the revenue already claimed
+ * by real ad-platform campaigns to avoid double-counting.
  */
-function mergeShopifyRevenue(
+function scaleRemainingMockCampaigns(
   shopifyData: ShopifyOrdersResponse,
-  metaCampaigns: Campaign[],
+  realCampaigns: Campaign[],         // Meta + Google real campaigns combined
+  realChannels: Set<string>,         // channels covered by real data e.g. {'Meta','Google'}
 ): CampaignDataSet {
   const { dailyRevenue, dailyOrders, dailyRefundAmount, refundRate } = shopifyData;
   const days = dailyRevenue.length;
@@ -73,33 +72,36 @@ function mergeShopifyRevenue(
   const safeOrders  = Array.from({ length: days }, (_, i) => dailyOrders[i] ?? 0);
   const safeRefunds = Array.from({ length: days }, (_, i) => dailyRefundAmount[i] ?? 0);
 
-  // Non-Meta mock campaigns — scale their revenue by Shopify totals
-  const nonMetaMock = MOCK_CAMPAIGNS.filter((c) => c.channel !== 'Meta');
-  const mockNonMetaDailyTotal = Array.from({ length: days }, (_, d) =>
-    nonMetaMock.reduce((sum, c) => sum + (c.dailyRevenue[d] ?? 0), 0),
+  // Mock campaigns for channels that are still on mock data
+  const mockRemaining = MOCK_CAMPAIGNS.filter((c) => !realChannels.has(c.channel));
+
+  if (mockRemaining.length === 0) {
+    return { campaigns: realCampaigns, dailyOrders: safeOrders, dailyRefunds: safeRefunds, refundRate };
+  }
+
+  // Daily revenue already attributed to real ad-platform campaigns
+  const realDailyRevenue = Array.from({ length: days }, (_, d) =>
+    realCampaigns.reduce((sum, c) => sum + (c.dailyRevenue[d] ?? 0), 0),
   );
 
-  // Daily Meta pixel revenue (to exclude from the Shopify revenue available
-  // for non-Meta campaigns, avoiding double-counting where possible)
-  const metaDailyRevenue = Array.from({ length: days }, (_, d) =>
-    metaCampaigns.reduce((sum, c) => sum + (c.dailyRevenue[d] ?? 0), 0),
+  const mockRemainingDailyTotal = Array.from({ length: days }, (_, d) =>
+    mockRemaining.reduce((sum, c) => sum + (c.dailyRevenue[d] ?? 0), 0),
   );
 
-  const scaledNonMeta: Campaign[] = nonMetaMock.map((c) => ({
+  const scaledMock: Campaign[] = mockRemaining.map((c) => ({
     ...c,
     dailyRevenue: Array.from({ length: days }, (_, d) => {
-      // Revenue available for non-Meta attribution = Shopify total − Meta pixel revenue
-      const available = Math.max(0, safeRevenue[d] - metaDailyRevenue[d]);
-      const mockTotal = mockNonMetaDailyTotal[d];
+      const available = Math.max(0, safeRevenue[d] - realDailyRevenue[d]);
+      const mockTotal = mockRemainingDailyTotal[d];
       const share = mockTotal > 0
         ? (c.dailyRevenue[d] ?? 0) / mockTotal
-        : 1 / nonMetaMock.length;
+        : 1 / mockRemaining.length;
       return available * share;
     }),
   }));
 
   return {
-    campaigns: [...scaledNonMeta, ...metaCampaigns],
+    campaigns: [...scaledMock, ...realCampaigns],
     dailyOrders: safeOrders,
     dailyRefunds: safeRefunds,
     refundRate,
@@ -107,31 +109,68 @@ function mergeShopifyRevenue(
 }
 
 /**
+ * Distributes Shopify total daily revenue across ALL mock campaigns.
+ * Used when Shopify is connected but no ad platform is connected.
+ */
+function scaleAllMockCampaigns(shopifyData: ShopifyOrdersResponse): CampaignDataSet {
+  const { dailyRevenue, dailyOrders, dailyRefundAmount, refundRate } = shopifyData;
+  const days = dailyRevenue.length;
+
+  const safeRevenue = Array.from({ length: days }, (_, i) => dailyRevenue[i] ?? 0);
+  const safeOrders  = Array.from({ length: days }, (_, i) => dailyOrders[i] ?? 0);
+  const safeRefunds = Array.from({ length: days }, (_, i) => dailyRefundAmount[i] ?? 0);
+
+  const mockDailyTotal = Array.from({ length: days }, (_, d) =>
+    MOCK_CAMPAIGNS.reduce((sum, c) => sum + (c.dailyRevenue[d] ?? 0), 0),
+  );
+
+  const scaled: Campaign[] = MOCK_CAMPAIGNS.map((c) => ({
+    ...c,
+    dailyRevenue: Array.from({ length: days }, (_, d) => {
+      const mockTotal = mockDailyTotal[d];
+      const share = mockTotal > 0
+        ? (c.dailyRevenue[d] ?? 0) / mockTotal
+        : 1 / MOCK_CAMPAIGNS.length;
+      return safeRevenue[d] * share;
+    }),
+  }));
+
+  return { campaigns: scaled, dailyOrders: safeOrders, dailyRefunds: safeRefunds, refundRate };
+}
+
+/**
  * Returns campaign + order data for the metrics engine.
  *
- * Resolution order:
- *  1. Shopify connected  → real order totals for COGS/shipping/refund calcs
- *  2. Meta connected     → real Meta campaigns replace mock Meta campaigns
- *  3. Neither connected  → fully mock data
- *
- * Falls back gracefully to mock on any fetch error.
+ * @param shop           Shopify store domain (null = not connected)
+ * @param token          JWT (null = not authenticated)
+ * @param metaConnected  Whether Meta Ads is connected
+ * @param googleConnected Whether Google Ads is connected
  */
 export async function getCampaignData(
   shop: string | null,
   token: string | null,
   metaConnected: boolean = false,
+  googleConnected: boolean = false,
 ): Promise<CampaignDataSet> {
   const DAYS = 60;
 
-  // Fetch real Meta campaigns when connected (uses JWT to look up stored Meta token)
-  let metaCampaigns: Campaign[] = [];
-  if (token && metaConnected) {
-    metaCampaigns = await fetchMetaCampaigns(token, DAYS);
-  }
+  // Fetch real ad-platform campaigns in parallel
+  const [metaCampaigns, googleCampaigns] = await Promise.all([
+    token && metaConnected   ? fetchAdCampaigns('/api/meta/campaigns',   token, DAYS) : Promise.resolve([]),
+    token && googleConnected ? fetchAdCampaigns('/api/google/campaigns', token, DAYS) : Promise.resolve([]),
+  ]);
 
-  // No Shopify connection — use mock order data but substitute real Meta campaigns
+  const realCampaigns = [...metaCampaigns, ...googleCampaigns] as Campaign[];
+  const realChannels  = new Set<string>([
+    ...metaCampaigns.map(() => 'Meta'),
+    ...googleCampaigns.map(() => 'Google'),
+  ]);
+
+  const hasRealAds = realCampaigns.length > 0;
+
+  // No Shopify — use mock orders but substitute any real ad-platform campaigns
   if (!shop || !token) {
-    if (metaCampaigns.length === 0) {
+    if (!hasRealAds) {
       return {
         campaigns: MOCK_CAMPAIGNS,
         dailyOrders: MOCK_DAILY_ORDERS,
@@ -139,71 +178,39 @@ export async function getCampaignData(
         refundRate: 0.028,
       };
     }
-
-    // Real Meta campaigns + mock non-Meta campaigns + mock order data
-    const nonMetaMock = MOCK_CAMPAIGNS.filter((c) => c.channel !== 'Meta');
+    const mockRemaining = MOCK_CAMPAIGNS.filter((c) => !realChannels.has(c.channel));
     return {
-      campaigns: [...nonMetaMock, ...metaCampaigns],
+      campaigns: [...mockRemaining, ...realCampaigns],
       dailyOrders: MOCK_DAILY_ORDERS,
       dailyRefunds: MOCK_DAILY_REFUNDS,
       refundRate: 0.028,
     };
   }
 
-  // Shopify is connected — fetch real order data
+  // Shopify connected — fetch real order data
   try {
     const res = await fetch(`${EXPRESS_URL}/api/shopify/orders?days=${DAYS}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     if (!res.ok) {
-      console.error(`[shopifyData] orders fetch failed: ${res.status} — falling back to mock`);
-      const nonMetaMock = MOCK_CAMPAIGNS.filter((c) => c.channel !== 'Meta');
+      console.error(`[shopifyData] Shopify orders fetch failed: ${res.status} — falling back to mock`);
+      const mockRemaining = MOCK_CAMPAIGNS.filter((c) => !realChannels.has(c.channel));
       return {
-        campaigns: metaCampaigns.length > 0
-          ? [...nonMetaMock, ...metaCampaigns]
-          : MOCK_CAMPAIGNS,
+        campaigns: hasRealAds ? [...mockRemaining, ...realCampaigns] : MOCK_CAMPAIGNS,
         dailyOrders: MOCK_DAILY_ORDERS,
         dailyRefunds: MOCK_DAILY_REFUNDS,
         refundRate: 0.028,
       };
     }
 
-    const data = (await res.json()) as ShopifyOrdersResponse;
+    const shopifyData = (await res.json()) as ShopifyOrdersResponse;
 
-    if (metaCampaigns.length === 0) {
-      // Shopify only — distribute total revenue across all mock campaigns
-      const { dailyRevenue, dailyOrders, dailyRefundAmount, refundRate } = data;
-      const days = dailyRevenue.length;
-      const safeRevenue = Array.from({ length: days }, (_, i) => dailyRevenue[i] ?? 0);
-      const safeOrders  = Array.from({ length: days }, (_, i) => dailyOrders[i] ?? 0);
-      const safeRefunds = Array.from({ length: days }, (_, i) => dailyRefundAmount[i] ?? 0);
-
-      const mockDailyTotal = Array.from({ length: days }, (_, d) =>
-        MOCK_CAMPAIGNS.reduce((sum, c) => sum + (c.dailyRevenue[d] ?? 0), 0),
-      );
-
-      const realCampaigns: Campaign[] = MOCK_CAMPAIGNS.map((c) => ({
-        ...c,
-        dailyRevenue: Array.from({ length: days }, (_, d) => {
-          const mockTotal = mockDailyTotal[d];
-          const share = mockTotal > 0
-            ? (c.dailyRevenue[d] ?? 0) / mockTotal
-            : 1 / MOCK_CAMPAIGNS.length;
-          return safeRevenue[d] * share;
-        }),
-      }));
-
-      return {
-        campaigns: realCampaigns,
-        dailyOrders: safeOrders,
-        dailyRefunds: safeRefunds,
-        refundRate,
-      };
+    if (!hasRealAds) {
+      return scaleAllMockCampaigns(shopifyData);
     }
 
-    // Both Shopify + Meta connected — merge intelligently
-    return mergeShopifyRevenue(data, metaCampaigns);
+    return scaleRemainingMockCampaigns(shopifyData, realCampaigns, realChannels);
   } catch (err) {
     console.error('[shopifyData] fetch error — falling back to mock:', err);
     return {
