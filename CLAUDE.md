@@ -162,3 +162,12 @@ You are the coding agent for `TROI` (ROI Intelligence), a Next.js 16 + TypeScrip
 
 ## shadcn/ui Components Added
 `popover`, `tabs`, `toggle-group`, `slider`, `textarea`, `alert`, `toggle`
+
+## Docs & Context
+
+Project documentation lives in `docs/`:
+- `docs/architecture.md` — system diagram, data flow, layer separation, auth, state management, Prisma path, multi-tenancy, subagent workflow
+- `docs/changelog.md` — version history (Keep a Changelog format)
+- `docs/context.md` — living snapshot of current project state; update this after every meaningful change
+
+This project uses Claude Code subagents for development: **general-purpose** (day-to-day edits), **Explore** (reading unfamiliar code before changes), and **Plan** (multi-step design and trade-off evaluation). These are AI coding agents, not runtime software. Update `docs/context.md` and `docs/changelog.md` as part of any significant change so future agents start with accurate state.
