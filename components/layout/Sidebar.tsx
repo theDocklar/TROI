@@ -4,6 +4,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { LayoutDashboard, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/uiStore';
@@ -23,10 +24,11 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }): React.J
     router.replace('/signin');
   }
 
-  // Read display name from localStorage if set during sign-up (not real auth — best effort)
-  const email = typeof window !== 'undefined'
-    ? localStorage.getItem('troi_user_email') ?? 'user@example.com'
-    : 'user@example.com';
+  // Read display name from localStorage after mount to avoid SSR/client mismatch
+  const [email, setEmail] = useState('user@example.com');
+  useEffect(() => {
+    setEmail(localStorage.getItem('troi_user_email') ?? 'user@example.com');
+  }, []);
   const initials = email.slice(0, 2).toUpperCase();
 
   return (

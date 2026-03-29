@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
@@ -46,7 +47,11 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
 /** Recharts line chart visualising daily True ROI for the selected period. */
 export default function ROITrendChart(): React.JSX.Element {
   const range = useUIStore((s) => s.range);
-  const data = buildChartData(range);
+  // buildChartData uses new Date() — defer to client to avoid SSR/client date mismatch
+  const [data, setData] = useState<{ date: string; roi: number }[]>([]);
+  useEffect(() => {
+    setData(buildChartData(range));
+  }, [range]);
 
   const tickEvery = range === 7 ? 1 : range === 30 ? 5 : 15;
   const xTicks = data

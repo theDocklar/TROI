@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Send, CheckCheck } from 'lucide-react';
 import { useMetrics } from '@/hooks/useMetrics';
 import { useUIStore } from '@/store/uiStore';
@@ -20,12 +20,15 @@ export default function WhatsAppPreview(): React.JSX.Element {
   const range = useUIStore((s) => s.range);
   const { metrics } = useMetrics(range);
   const [sending, setSending] = useState(false);
+  // Initialize empty to avoid SSR/client time mismatch
+  const [now, setNow] = useState('');
+  useEffect(() => {
+    setNow(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }));
+  }, []);
 
   const messageBody = metrics
     ? generateNotificationText(metrics.current, range)
     : 'Loading…';
-
-  const now = new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
 
   const handleSend = async (): Promise<void> => {
     if (!metrics) return;

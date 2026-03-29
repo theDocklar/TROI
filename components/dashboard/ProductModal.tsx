@@ -6,7 +6,7 @@
  * Opens as a right-side sheet on desktop, bottom sheet on mobile.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -103,8 +103,11 @@ export default function ProductModal({ product, settings, onClose }: Props): Rea
     return { channel: ch, estUnits, estRevenue, estSpend, chROI };
   });
 
-  // Responsive: bottom sheet on mobile, right on desktop
-  const side = typeof window !== 'undefined' && window.innerWidth < 640 ? 'bottom' : 'right';
+  // Responsive: bottom sheet on mobile, right on desktop — resolved after mount to avoid SSR mismatch
+  const [side, setSide] = useState<'right' | 'bottom'>('right');
+  useEffect(() => {
+    setSide(window.innerWidth < 640 ? 'bottom' : 'right');
+  }, []);
 
   return (
     <Sheet open={!!product} onOpenChange={(open) => { if (!open) onClose(); }}>
